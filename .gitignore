@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.installed.cfg
+*.egg
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Data — raw and processed corpora are large, not versioned. data/samples/ IS versioned.
+data/raw/
+data/processed/
+!data/samples/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Node (for apps/web in Phase 8)
+node_modules/
+.next/
+dist/
+build/
+
+# Docker
+*.log
+
+# Langfuse / dev data
+langfuse_data/
+postgres_data/
+redis_data/
+qdrant_data/
+
+# Terraform (Phase 9)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
