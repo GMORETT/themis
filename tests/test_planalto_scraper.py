@@ -31,7 +31,13 @@ def test_parser_extracts_each_current_article_once(parsed) -> None:
     article_nums = [
         s.artigo for s in parsed.hierarchy if s.artigo and not s.paragrafo and not s.inciso
     ]
-    assert article_nums == ["1", "7", "20", "56", "55-A", "62"]
+    assert article_nums == ["1", "7", "20", "56", "57", "55-A", "62"]
+
+
+def test_split_span_article_number_is_rejoined(parsed) -> None:
+    art57 = next((s for s in parsed.hierarchy if s.artigo == "57"), None)
+    assert art57 is not None, "Art. 57 (split across spans) should be parsed"
+    assert "(VETADO)" in art57.text
 
 
 def test_revoked_versions_are_skipped(parsed) -> None:
