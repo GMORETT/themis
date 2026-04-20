@@ -1,4 +1,7 @@
-.PHONY: help install sync up down logs fmt lint typecheck test ci clean
+PYTHONPATH := apps:packages
+export PYTHONPATH
+
+.PHONY: help install sync up down logs fmt lint typecheck test ci clean ingest ingest-lgpd
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -36,3 +39,9 @@ ci: lint typecheck test ## Run full CI checks locally
 clean: ## Remove caches
 	rm -rf .venv .mypy_cache .pytest_cache .ruff_cache
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+ingest-lgpd: ## Scrape + normalize LGPD from Planalto (Phase 1A)
+	uv run python -m ingestion.cli fetch-lgpd
+
+ingest: ingest-lgpd ## Run the full ingestion pipeline
+	@echo "✓ ingestion pipeline done (Phase 1A scope)"
