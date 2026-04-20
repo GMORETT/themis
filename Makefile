@@ -1,7 +1,7 @@
 PYTHONPATH := apps:packages
 export PYTHONPATH
 
-.PHONY: help install sync up down logs fmt lint typecheck test ci clean ingest ingest-lgpd
+.PHONY: help install sync up down logs fmt lint typecheck test ci clean ingest ingest-lgpd ingest-chunk
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -43,5 +43,8 @@ clean: ## Remove caches
 ingest-lgpd: ## Scrape + normalize LGPD from Planalto (Phase 1A)
 	uv run python -m ingestion.cli fetch-lgpd
 
-ingest: ingest-lgpd ## Run the full ingestion pipeline
-	@echo "✓ ingestion pipeline done (Phase 1A scope)"
+ingest-chunk: ## Chunk normalized JSONL into retrieval units (Phase 1B)
+	uv run python -m ingestion.cli chunk
+
+ingest: ingest-lgpd ingest-chunk ## Run the full ingestion pipeline
+	@echo "✓ ingestion pipeline done (Phase 1B scope)"

@@ -4,6 +4,7 @@ Two layers:
 - RawDocument: pointer to raw scraped artifact on disk
 - NormalizedDocument: parsed, hierarchy-preserved canonical form (serialized to JSONL)
 - Section: one node in the legal-text hierarchy (capítulo → seção → artigo → §/inciso)
+- Chunk: retrieval unit produced by the chunker (Phase 1B), indexed in Qdrant (Phase 1C)
 
 These models are consumed by the chunker (Phase 1B) and the indexer (Phase 1C).
 """
@@ -68,3 +69,28 @@ class NormalizedDocument(BaseModel):
     enacted_at: date | None = None
     fetched_at: datetime
     hierarchy: list[Section]
+
+
+class Chunk(BaseModel):
+    """Retrieval unit: a self-contained text snippet with full provenance metadata.
+
+    Produced by the chunker from a NormalizedDocument; indexed in Qdrant with this
+    payload so retrieval results carry enough context for the generator (Phase 2).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(description="SHA-256 hex digest of (doc_id + text)")
+    doc_id: str = Field(description="parent NormalizedDocument.id")
+    source: str
+    doc_type: DocType
+    jurisdiction: Jurisdiction
+    title: str = Field(description="parent document title")
+    capitulo: str | None = None
+    secao: str | None = None
+    article_num: str | None = None
+    paragraph_num: str | None = None
+    inciso: str | None = None
+    enacted_at: date | None = None
+    text: str
+    tokens_approx: int = Field(description="approximate token count via tiktoken cl100k")
