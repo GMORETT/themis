@@ -17,10 +17,13 @@ env/
 coverage.xml
 htmlcov/
 
-# Data — raw and processed corpora are large, not versioned. data/samples/ IS versioned.
+# Data
+# - data/raw/        raw scraped HTML/PDF, reproducible, not versioned
+# - data/processed/  normalized JSONL, versioned starting from v1 (anchor for Phase 2)
+# - data/samples/    small fixtures, versioned
 data/raw/
-data/processed/
-!data/samples/
+data/processed/tmp/
+data/processed/scratch/
 
 # Env
 .env
