@@ -118,6 +118,10 @@ def parse_lgpd(html_bytes: bytes) -> NormalizedDocument:
             continue
         text = p.get_text(separator=" ", strip=True).replace("\xa0", " ")
         text = re.sub(r"\s+", " ", text)
+        # Word-generated HTML sometimes splits article numbers across spans with
+        # different lang= attributes (e.g. "Art. 5" + "7." → "Art. 5 7.").
+        # Re-join digits that were separated mid-number after "Art.".
+        text = re.sub(r"(Art\.\s*\d+) (\d)", r"\1\2", text)
         if not text or _CLOSING_RE.match(text):
             continue
 

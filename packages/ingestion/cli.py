@@ -8,9 +8,13 @@ Run via: `uv run python -m ingestion.cli <command>`
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
+from rag.embedder import DIMENSIONS, MODEL, OpenAIEmbedder
+from rag.index import COLLECTION, ensure_collection, upsert_chunks
+from rag.sparse import BM25Encoder
 
 from ingestion import normalize
 from ingestion.chunker import chunk_document
@@ -73,6 +77,84 @@ def chunk() -> None:
             f.write(c.model_dump_json())
             f.write("\n")
     typer.echo(f"✓ wrote {len(all_chunks)} chunks → {chunks_path}")
+
+
+@app.command("embed")
+def embed(
+    rebuild: bool = typer.Option(False, "--rebuild", help="Re-embed even if vectors file exists."),
+) -> None:
+    """Embed chunks via OpenAI and write vectors JSONL."""
+    chunks_path = DATA_PROCESSED_V1 / "chunks.jsonl"
+    vectors_path = DATA_PROCESSED_V1 / "vectors.jsonl"
+
+    if vectors_path.exists() and not rebuild:
+        typer.echo(f"✓ vectors already exist at {vectors_path} (use --rebuild to re-embed)")
+        return
+
+    typer.echo(f"→ read {chunks_path}")
+    chunks = []
+    with chunks_path.open(encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                from core.schema import Chunk
+
+                chunks.append(Chunk.model_validate_json(line))
+    typer.echo(f"  {len(chunks)} chunks")
+
+    embedder = OpenAIEmbedder()
+    typer.echo(f"→ embed via {MODEL} ({DIMENSIONS}-d) in batches of 100")
+    texts = [c.text for c in chunks]
+    vectors, total_tokens = embedder.embed_with_usage(texts)
+    cost = total_tokens * 0.13 / 1_000_000
+    typer.echo(f"  {total_tokens:,} tokens consumed | estimated cost ${cost:.5f}")
+
+    vectors_path.parent.mkdir(parents=True, exist_ok=True)
+    with vectors_path.open("w", encoding="utf-8") as f:
+        for chunk, vec in zip(chunks, vectors, strict=True):
+            f.write(json.dumps({"id": chunk.id, "vector": vec}))
+            f.write("\n")
+    typer.echo(f"✓ wrote {len(vectors)} vectors → {vectors_path}")
+
+
+@app.command("index")
+def index(
+    rebuild: bool = typer.Option(False, "--rebuild", help="Delete and recreate Qdrant collection."),
+) -> None:
+    """Index embedded chunks into Qdrant."""
+
+    from rag.index import _get_client
+
+    chunks_path = DATA_PROCESSED_V1 / "chunks.jsonl"
+    vectors_path = DATA_PROCESSED_V1 / "vectors.jsonl"
+
+    typer.echo("→ read chunks + vectors")
+    chunks = []
+    with chunks_path.open(encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                from core.schema import Chunk
+
+                chunks.append(Chunk.model_validate_json(line))
+
+    vectors: list[list[float]] = []
+    with vectors_path.open(encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                vectors.append(json.loads(line)["vector"])
+
+    typer.echo(f"  {len(chunks)} chunks, {len(vectors)} vectors")
+
+    typer.echo("→ build BM25 encoder")
+    encoder = BM25Encoder([c.text for c in chunks])
+
+    client = _get_client()
+    typer.echo(f"→ ensure collection '{COLLECTION}' (rebuild={rebuild})")
+    ensure_collection(client, rebuild=rebuild)
+
+    typer.echo("→ upsert to Qdrant")
+    n = upsert_chunks(client, chunks, vectors, encoder)
+    info = client.get_collection(COLLECTION)
+    typer.echo(f"✓ indexed {n} points | collection has {info.points_count} points total")
 
 
 if __name__ == "__main__":
