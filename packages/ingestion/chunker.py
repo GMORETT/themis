@@ -179,4 +179,15 @@ def chunk_document(doc: NormalizedDocument) -> list[Chunk]:
             )
         )
 
-    return chunks
+    # PDF-derived corpora occasionally repeat headers/footers verbatim across
+    # pages, producing chunks with identical (doc_id, text) and therefore
+    # identical SHA-256 IDs. Drop the dupes so Qdrant point counts match the
+    # chunks file exactly.
+    seen: set[str] = set()
+    deduped: list[Chunk] = []
+    for c in chunks:
+        if c.id in seen:
+            continue
+        seen.add(c.id)
+        deduped.append(c)
+    return deduped

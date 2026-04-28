@@ -18,7 +18,7 @@ from rag.sparse import BM25Encoder
 
 from ingestion import normalize
 from ingestion.chunker import chunk_document
-from ingestion.sources import planalto
+from ingestion.sources import anpd, planalto
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_RAW = REPO_ROOT / "data" / "raw"
@@ -155,6 +155,55 @@ def index(
     n = upsert_chunks(client, chunks, vectors, encoder)
     info = client.get_collection(COLLECTION)
     typer.echo(f"✓ indexed {n} points | collection has {info.points_count} points total")
+
+
+@app.command("fetch-anpd")
+def fetch_anpd_cmd() -> None:
+    """Fetch ANPD resolutions + guides, chunk, and append to JSONL."""
+    raw_resolucoes = DATA_RAW / "anpd" / "resolucoes"
+    raw_guias = DATA_RAW / "anpd" / "guias"
+    jsonl_resolucoes = DATA_PROCESSED_V1 / "anpd_resolucoes.jsonl"
+    jsonl_guias = DATA_PROCESSED_V1 / "anpd_guias.jsonl"
+    chunks_path = DATA_PROCESSED_V1 / "chunks.jsonl"
+
+    typer.echo("→ fetch resoluções CD/ANPD")
+    resolucoes = anpd.fetch_resolucoes(raw_resolucoes)
+    typer.echo(f"  {len(resolucoes)} resoluções fetched")
+    normalize.write_jsonl(resolucoes, jsonl_resolucoes)
+
+    typer.echo("→ fetch guias ANPD")
+    guias = anpd.fetch_guias(raw_guias)
+    typer.echo(f"  {len(guias)} guias fetched")
+    normalize.write_jsonl(guias, jsonl_guias)
+
+    all_docs = resolucoes + guias
+    typer.echo(f"→ chunk {len(all_docs)} ANPD documents")
+    anpd_chunks = []
+    for doc in all_docs:
+        anpd_chunks.extend(chunk_document(doc))
+    typer.echo(f"  {len(anpd_chunks)} chunks produced")
+
+    # Idempotent rewrite: keep non-ANPD chunks (LGPD), replace ANPD section.
+    kept: list[str] = []
+    if chunks_path.exists():
+        for line in chunks_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            if '"source":"anpd"' in line or '"source": "anpd"' in line:
+                continue
+            kept.append(line)
+
+    with chunks_path.open("w", encoding="utf-8") as f:
+        for line in kept:
+            f.write(line)
+            f.write("\n")
+        for c in anpd_chunks:
+            f.write(c.model_dump_json())
+            f.write("\n")
+    typer.echo(
+        f"✓ wrote {len(kept)} kept + {len(anpd_chunks)} ANPD = "
+        f"{len(kept) + len(anpd_chunks)} chunks → {chunks_path}"
+    )
 
 
 if __name__ == "__main__":
