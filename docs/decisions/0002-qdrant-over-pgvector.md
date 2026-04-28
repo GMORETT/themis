@@ -7,7 +7,7 @@
 
 ## Context
 
-Themis retrieval is **hybrid**: dense (bge-m3 embeddings, 1024 dims) + sparse (BM25 or sparse embedding) with reciprocal rank fusion, followed by cross-encoder reranking (bge-reranker-v2-m3). The target corpus is the LGPD + ANPD regulations + decisions + (Phase 10) GDPR — on the order of thousands of chunks, not millions.
+Themis retrieval is **hybrid**: dense (OpenAI `text-embedding-3-large`, 3072 dims) + sparse (BM25 or sparse embedding) with reciprocal rank fusion, followed by cross-encoder reranking (bge-reranker-v2-m3). The target corpus is the LGPD + ANPD regulations + decisions + (Phase 10) GDPR — on the order of thousands of chunks, not millions.
 
 Requirements:
 

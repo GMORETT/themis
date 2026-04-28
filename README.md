@@ -100,7 +100,7 @@ cost exceeds `COST_HARD_STOP_USD = $1`. The full Phase 1 corpus embeds for
 
 ## Tech stack (summary)
 
-Python 3.11 · FastAPI · LangGraph · Qdrant (dense + sparse BM25) · Postgres · Redis · AWS Bedrock (prod) / Ollama (dev) · OpenAI text-embedding-3-large (dev) → bge-m3 (target) · bge-reranker-v2-m3 · RAGAS + DeepEval · Langfuse · ECS Fargate · Terraform
+Python 3.11 · FastAPI · LangGraph · Qdrant (dense + sparse BM25) · Postgres · Redis · AWS Bedrock · OpenAI text-embedding-3-large · bge-reranker-v2-m3 · RAGAS + DeepEval · Langfuse · ECS Fargate · Terraform
 
 ## Disclaimer
 

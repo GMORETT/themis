@@ -149,8 +149,8 @@ Observability (cross-cutting):
 - **API Layer:** FastAPI com streaming (SSE)
 - **Orchestration:** LangGraph (state machine de agentes)
 - **Retrieval:** Hybrid search (BM25 + dense) no Qdrant + reranking com cross-encoder
-- **LLM Routing:** Bedrock (Claude Haiku para queries simples, Claude Sonnet para síntese complexa); Ollama local em dev
-- **Embeddings:** `BAAI/bge-m3` (multilingual, suporta PT-BR e EN) ou Bedrock Titan Embeddings
+- **LLM Routing:** Bedrock (Claude Haiku para queries simples, Claude Sonnet para síntese complexa)
+- **Embeddings:** `OpenAI text-embedding-3-large` (3072 dims, via API)
 - **Vector Store:** Qdrant (self-hosted em dev, Qdrant Cloud tier grátis em prod)
 - **Metadata Store:** Postgres (RDS Free Tier)
 - **Cache:** Redis (ElastiCache ou container)
@@ -185,9 +185,8 @@ Observability (cross-cutting):
 - **LangChain** (componentes auxiliares, mas não como spine — LangGraph é o spine)
 
 ### 4.2 LLM e AI
-- **Prod:** AWS Bedrock (Claude Haiku 3.5 + Claude Sonnet 4)
-- **Dev:** Ollama (Llama 3.1 8B ou Qwen 2.5 7B localmente)
-- **Embeddings:** BAAI/bge-m3 via HuggingFace (local) ou Bedrock Titan (prod)
+- **LLM:** AWS Bedrock — Claude Haiku 3.5 (fast path) + Claude Sonnet 4 (síntese complexa)
+- **Embeddings:** OpenAI `text-embedding-3-large` (3072 dims) — ver ADR-0004
 - **Reranker:** BAAI/bge-reranker-v2-m3 (cross-encoder)
 
 ### 4.3 Armazenamento
@@ -286,7 +285,7 @@ Estabelecer fundação de engenharia antes de escrever lógica de negócio.
    - `pre-commit` com hooks
    - `.env.example` template
 4. **Docker Compose local:**
-   - Postgres, Redis, Qdrant, Langfuse (self-hosted), Ollama
+   - Postgres, Redis, Qdrant, Langfuse (self-hosted)
 5. **GitHub Actions básico:**
    - Lint + typecheck + tests em PRs
 6. **Architecture Decision Records (ADRs):**
@@ -337,7 +336,7 @@ Construir pipeline robusto de ingestão, chunking, embedding e indexação do co
    - **Nível 2:** se artigo > 500 tokens, split em parágrafos mantendo contexto pai
    - Experimentar: semantic chunking vs fixed-size vs estrutural (logar no ADR)
 4. **Embedding:**
-   - Usar `bge-m3` (multilingual, 1024 dims)
+   - Usar `text-embedding-3-large` da OpenAI (3072 dims) — ver ADR-0004
    - Batch embedding com rate limit
    - Store: vector + metadata completa no Qdrant
 5. **Indexação híbrida:**
@@ -352,7 +351,7 @@ Construir pipeline robusto de ingestão, chunking, embedding e indexação do co
 
 #### Decisões a documentar (ADRs)
 - Estratégia de chunking escolhida e por quê (com benchmark)
-- Embedding model (por que bge-m3 e não Titan ou OpenAI)
+- Embedding model (decisão documentada em ADR-0004: OpenAI text-embedding-3-large)
 - Hybrid vs dense-only (com evidência)
 
 #### Definition of Done
@@ -393,7 +392,7 @@ Sistema end-to-end mais simples possível funcionando. **Sem agentes ainda.**
    - System prompt estrito: "responda APENAS com base no contexto, cite sempre, recuse se não souber"
    - Template com slots: `{context}`, `{question}`, `{citation_format}`
 4. **Generation:**
-   - Chamada ao LLM (Ollama em dev, Bedrock em prod)
+   - Chamada ao LLM (AWS Bedrock — Haiku fast path, Sonnet síntese)
    - Streaming de tokens
 5. **Citation formatting:**
    - Cada afirmação deve terminar com `[Art. X, LGPD]` ou similar
