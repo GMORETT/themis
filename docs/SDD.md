@@ -232,20 +232,20 @@ Observability (cross-cutting):
 
 Ordem estritamente sequencial. Cada fase tem critérios de "done" antes de avançar.
 
-| Fase | Nome | Duração | Objetivo |
-|------|------|---------|----------|
-| 0 | Setup e Foundations | 3–4 dias | Repo, tooling, estrutura base |
-| 1 | Data Ingestion Pipeline | 5–7 dias | Corpus LGPD+ANPD indexado e consultável |
-| 2 | RAG Baseline (sem agentes) | 5–7 dias | Sistema end-to-end básico funcionando |
-| 3 | Evaluation Framework | 4–6 dias | Dataset + métricas + CI-integrated evals |
-| 4 | Agentic Orchestration | 7–10 dias | Multi-agent com LangGraph |
-| 5 | Optimization (custo/latência) | 4–6 dias | Cache, routing, streaming, benchmarks |
-| 6 | Guardrails e Security | 3–5 dias | Input/output guardrails, PII, injection |
-| 7 | Observability | 3–4 dias | Langfuse + dashboards + alerts |
-| 8 | Frontend Mínimo | 3–5 dias | Chat UI + history + dashboard |
-| 9 | Deploy AWS | 4–6 dias | Produção com URL pública |
-| 10 | GDPR Extension | 3–5 dias | Corpus GDPR + cross-jurisdictional |
-| 11 | Documentation Polish | 2–3 dias | README, ARCHITECTURE, EVAL reports |
+| Fase | Nome | Duração | Objetivo | Status |
+|------|------|---------|----------|--------|
+| 0 | Setup e Foundations | 3–4 dias | Repo, tooling, estrutura base | ✅ done |
+| 1 | Data Ingestion Pipeline | 5–7 dias | Corpus LGPD+ANPD indexado e consultável | ✅ done (1A+1B+1C+1D) |
+| 2 | RAG Baseline (sem agentes) | 5–7 dias | Sistema end-to-end básico funcionando | ⏳ next |
+| 3 | Evaluation Framework | 4–6 dias | Dataset + métricas + CI-integrated evals | ⏳ |
+| 4 | Agentic Orchestration | 7–10 dias | Multi-agent com LangGraph | ⏳ |
+| 5 | Optimization (custo/latência) | 4–6 dias | Cache, routing, streaming, benchmarks | ⏳ |
+| 6 | Guardrails e Security | 3–5 dias | Input/output guardrails, PII, injection | ⏳ |
+| 7 | Observability | 3–4 dias | Langfuse + dashboards + alerts | ⏳ |
+| 8 | Frontend Mínimo | 3–5 dias | Chat UI + history + dashboard | ⏳ |
+| 9 | Deploy AWS | 4–6 dias | Produção com URL pública | ⏳ |
+| 10 | GDPR Extension | 3–5 dias | Corpus GDPR + cross-jurisdictional | ⏳ |
+| 11 | Documentation Polish | 2–3 dias | README, ARCHITECTURE, EVAL reports | ⏳ |
 
 **Total estimado:** 5–7 semanas em ritmo part-time intenso.
 
@@ -300,10 +300,15 @@ Estabelecer fundação de engenharia antes de escrever lógica de negócio.
    - Status badges
 
 #### Definition of Done
-- [ ] `docker-compose up` sobe toda a stack local
-- [ ] CI verde em PR de teste
-- [ ] 2+ ADRs escritos
-- [ ] README claro o suficiente para outro dev rodar localmente
+- [x] `docker-compose up` sobe toda a stack local
+- [x] CI verde em PR de teste
+- [x] 2+ ADRs escritos (ADR-0001 LangGraph, ADR-0002 Qdrant)
+- [x] README claro o suficiente para outro dev rodar localmente
+
+#### Status — concluída
+Bootstrap commit `7571f27` (chore: bootstrap repo for Phase 0). README PR `#1`
+adicionou status badge. Stack local (postgres + redis + qdrant) sobe via
+`docker compose up -d`; CI configurado em `.github/workflows/ci.yml`.
 
 ---
 
@@ -351,11 +356,25 @@ Construir pipeline robusto de ingestão, chunking, embedding e indexação do co
 - Hybrid vs dense-only (com evidência)
 
 #### Definition of Done
-- [ ] 100% dos artigos da LGPD indexados com metadata correta
-- [ ] Regulamentações da ANPD indexadas (principais)
-- [ ] Pipeline rodável via `make ingest` ou CLI
-- [ ] Testes unitários para loaders e chunkers
-- [ ] Script de validação passa
+- [x] 100% dos artigos da LGPD indexados com metadata correta (79 artigos, 92 chunks)
+- [x] Regulamentações da ANPD indexadas (10 resoluções CD/ANPD nº 4–32 + 4 guias oficiais)
+- [x] Pipeline rodável via `make ingest` ou CLI (4 sub-targets: lgpd / chunk / anpd / index)
+- [x] Testes unitários para loaders e chunkers (36 tests passing)
+- [x] Script de validação passa (`scripts/validate_corpus.py`)
+
+#### Status — concluída em 4 sub-marcos
+
+| Sub-marco | Escopo | PR | Resultado |
+|-----------|--------|----|-----------|
+| **1A** | Planalto scraper + LGPD normalization | [#2](https://github.com/GMORETT/themis/pull/2) | 79 artigos parseados (Latin-1, UA, revoked text, split-span repair) |
+| **1B** | Chunker + Chunk schema + ADR-0003 | [#3](https://github.com/GMORETT/themis/pull/3) | 92 chunks (avg 227 / max 497 tok), hierarchical-first split |
+| **1C** | OpenAI embedder + Qdrant hybrid index + smoke query | [#4](https://github.com/GMORETT/themis/pull/4) | 92 vectors (3072-d) + BM25 sparse, smoke query Art. 41 ✓ |
+| **1D** | ANPD corpus (resoluções + guias) + ADR-0005 | [#5](https://github.com/GMORETT/themis/pull/5) | +336 ANPD chunks, 428 total points em `themis_lgpd_v1` |
+
+**Snapshot final do corpus:** 428 chunks indexados (92 LGPD + 336 ANPD),
+custo total de embedding US$ 0.019 (text-embedding-3-large, 144 997 tokens).
+ADRs adicionados: 0003 (chunking), 0004 (embedding model), 0005 (BM25 sparse
+em Qdrant vs Postgres tsvector).
 
 ---
 
