@@ -10,6 +10,9 @@ See [`template.md`](decisions/template.md) for the structure of new ADRs.
 |---|-------|--------|-------|
 | [0001](decisions/0001-langgraph-over-crewai-autogen.md) | LangGraph as the agentic orchestration spine | Accepted | 0 (binding for 4) |
 | [0002](decisions/0002-qdrant-over-pgvector.md) | Qdrant as the vector store | Accepted | 0 (binding for 1+) |
+| [0003](decisions/0003-chunking-strategy.md) | Hierarchical-first chunking with 500-token split | Accepted | 1B |
+| [0004](decisions/0004-embedding-model.md) | OpenAI text-embedding-3-large for dense embeddings | Accepted | 1C |
+| [0005](decisions/0005-sparse-bm25-over-tsvector.md) | BM25 sparse vectors in Qdrant for hybrid retrieval | Accepted | 1C/1D |
 
 ## Conventions
 

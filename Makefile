@@ -1,7 +1,7 @@
 PYTHONPATH := apps:packages
 export PYTHONPATH
 
-.PHONY: help install sync up down logs fmt lint typecheck test ci clean ingest ingest-lgpd ingest-chunk ingest-index
+.PHONY: help install sync up down logs fmt lint typecheck test ci clean ingest ingest-lgpd ingest-chunk ingest-anpd ingest-index
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -46,9 +46,12 @@ ingest-lgpd: ## Scrape + normalize LGPD from Planalto (Phase 1A)
 ingest-chunk: ## Chunk normalized JSONL into retrieval units (Phase 1B)
 	uv run python -m ingestion.cli chunk
 
-ingest-index: ## Embed chunks + index into Qdrant (Phase 1C)
-	uv run python -m ingestion.cli embed
-	uv run python -m ingestion.cli index
+ingest-anpd: ## Fetch ANPD resolutions + guides and append chunks (Phase 1D)
+	uv run python -m ingestion.cli fetch-anpd
 
-ingest: ingest-lgpd ingest-chunk ingest-index ## Run the full ingestion pipeline
-	@echo "✓ ingestion pipeline done (Phase 1C scope)"
+ingest-index: ## Embed chunks + index into Qdrant (Phase 1C/1D)
+	uv run python -m ingestion.cli embed --rebuild
+	uv run python -m ingestion.cli index --rebuild
+
+ingest: ingest-lgpd ingest-chunk ingest-anpd ingest-index ## Run the full ingestion pipeline
+	@echo "✓ ingestion pipeline done (Phase 1D scope)"
