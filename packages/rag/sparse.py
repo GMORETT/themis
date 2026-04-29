@@ -28,14 +28,24 @@ class BM25Encoder:
                     self._vocab[t] = len(self._vocab)
 
     def encode(self, text: str) -> dict[int, float]:
-        """Return {token_index: bm25_score} sparse vector for a query."""
-        tokens = _tokenize(text)
-        scores = self._bm25.get_scores(tokens)
-        return {
-            self._vocab[t]: float(scores[self._vocab[t]])
-            for t in tokens
-            if t in self._vocab and scores[self._vocab[t]] > 0
-        }
+        """Return {token_index: idf_weight} sparse vector for a query.
+
+        For query-side encoding we weight each known query token by its IDF —
+        this is what Qdrant's BM25 sparse-search expects on the query side
+        while document vectors carry the term frequencies. `BM25Okapi.idf`
+        is precomputed at __init__ time, so this is a vocab lookup, not a
+        per-document scan.
+        """
+        out: dict[int, float] = {}
+        for t in _tokenize(text):
+            if t not in self._vocab:
+                continue
+            idf = float(self._bm25.idf.get(t, 0.0))
+            if idf <= 0:
+                continue
+            idx = self._vocab[t]
+            out[idx] = out.get(idx, 0.0) + idf
+        return out
 
     def encode_document(self, text: str) -> dict[int, float]:
         """Return {token_index: tf} sparse vector for a document."""

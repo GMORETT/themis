@@ -75,41 +75,40 @@ def check_qdrant(expected_points: int) -> None:
     print(f"✓ Qdrant collection '{COLLECTION}' has {actual} points")
 
 
-def _query_top_k(query: str, top_k: int) -> list[dict]:
-    from rag.embedder import OpenAIEmbedder
-    from rag.index import _get_client, search
-
-    client = _get_client()
-    embedder = OpenAIEmbedder()
-    vec = embedder.embed([query])[0]
-    return search(client, vec, top_k=top_k)
+_RETRIEVER = None
 
 
-def smoke_lgpd_article(query: str, expected_article: str, top_k: int = 5) -> None:
-    # Pull a wider window and filter to LGPD chunks — ANPD docs use sequential
-    # paragraph numbers as article_num, which would collide with real LGPD
-    # article numbers in the result set.
-    results = _query_top_k(query, top_k * 4)
-    lgpd = [r for r in results if r.get("source") == "planalto"][:top_k]
-    articles = [r.get("article_num") for r in lgpd]
-    print(f"  query: '{query}'")
-    print(f"  top-{top_k} LGPD articles: {articles}")
+def _get_retriever():
+    """Lazy-init a single HybridRetriever for all smoke calls."""
+    from rag.retrieval import HybridRetriever
+
+    global _RETRIEVER
+    if _RETRIEVER is None:
+        _RETRIEVER = HybridRetriever.from_chunks_jsonl(CHUNKS_PATH)
+    return _RETRIEVER
+
+
+def smoke_lgpd_article(query: str, expected_article: str, top_k: int = 3) -> None:
+    """Hybrid retrieval restricted to the LGPD slice of the corpus."""
+    results = _get_retriever().retrieve(query, top_k=top_k, source="planalto")
+    articles = [r.get("article_num") for r in results]
+    print(f"  query: '{query}' [source=planalto]")
+    print(f"  top-{top_k} articles: {articles}")
     assert expected_article in articles, (
-        f"expected Art. {expected_article} in top-{top_k} LGPD results, got {articles}"
+        f"expected Art. {expected_article} in top-{top_k}, got {articles}"
     )
-    print(f"✓ LGPD smoke: Art. {expected_article} in top-{top_k} LGPD results")
+    print(f"✓ LGPD smoke: Art. {expected_article} in top-{top_k}")
 
 
 def smoke_anpd(query: str, expected_doc_type: str, top_k: int = 3) -> None:
-    results = _query_top_k(query, top_k)
+    """Hybrid retrieval restricted to the ANPD slice of the corpus."""
+    results = _get_retriever().retrieve(query, top_k=top_k, source="anpd")
     doc_types = [r.get("doc_type") for r in results]
-    sources = [r.get("source") for r in results]
-    print(f"  query: '{query}'")
+    print(f"  query: '{query}' [source=anpd]")
     print(f"  top-{top_k} doc_types: {doc_types}")
     assert expected_doc_type in doc_types, (
         f"expected {expected_doc_type} in top-{top_k}, got {doc_types}"
     )
-    assert "anpd" in sources, f"expected at least one ANPD result, got {sources}"
     print(f"✓ ANPD smoke: {expected_doc_type} found in top-{top_k}")
 
 
